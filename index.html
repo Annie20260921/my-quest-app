@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 禁止手機雙擊縮放，確保操作手感完全像原生 App -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>生活闖關手帳</title>
+
+  <!-- iOS / Apple Web App 設定 -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="生活闖關" />
+  <meta name="theme-color" content="#FAF7F2" />
+
+  <!-- App 桌面圖示 (以 SVG 內嵌成高解析奶茶風圖標，無需外連圖片) -->
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%237A6859'/><text x='50%' y='55%' font-size='50' text-anchor='middle' dominant-baseline='middle'>🧭</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%237A6859'/><text x='50%' y='55%' font-size='50' text-anchor='middle' dominant-baseline='middle'>🧭</text></svg>">
+
+  <!-- 內嵌 PWA Manifest 設定 -->
+  <link rel="manifest" href="data:application/manifest+json;utf-8,%7B%22name%22%3A%22%E7%94%9F%E6%B4%BB%E9%97%96%E9%97%9C%E6%89%8B%E5%B8%B3%22%2C%22short_name%22%3A%22%E7%94%9F%E6%B4%BB%E9%97%96%E9%97%9C%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FAF7F2%22%2C%22theme_color%22%3A%22%23FAF7F2%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Crect%20width%3D'100'%20height%3D'100'%20rx%3D'25'%20fill%3D'%237A6859'%2F%3E%3Ctext%20x%3D'50%25'%20y%3D'55%25'%20font-size%3D'50'%20text-anchor%3D'middle'%20dominant-baseline%3D'middle'%3E%F0%9F%A7%AD%3C%2Ftext%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22192x192%20512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background-color: #F6F4EF;
+      color: #4A3E36;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="flex justify-center min-h-screen sm:py-4 px-0 sm:px-2 select-none">
+
+  <div id="app" class="w-full max-w-lg bg-[#FFFDF9] sm:rounded-3xl shadow-xl shadow-[#E8E1D5]/60 border-x sm:border border-[#ECE4D8] flex flex-col h-screen sm:h-[94vh] max-h-[920px] overflow-hidden">
+    
+    <!-- 頂部資訊列：點擊日期呼叫 TimeTree 月曆 -->
+    <header class="px-5 py-3.5 bg-[#FAF7F2] border-b border-[#EAE2D5] flex items-center justify-between shrink-0 pt-safe">
+      <button 
+        @click="showCalendarModal = true" 
+        class="flex items-center space-x-2 px-3 py-1.5 rounded-2xl bg-[#EFE8DE] hover:bg-[#E5DCD0] active:scale-95 text-xs font-bold text-[#55473C] transition shadow-2xs group"
+      >
+        <span>📅</span>
+        <span>{{ selectedDateDisplayStr }}</span>
+        <span class="text-[10px] text-[#8C7B6D]">▼</span>
+      </button>
+
+      <div class="flex items-center space-x-2">
+        <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#E5DCD0] text-[#6E5D4F]">W{{ currentWeek }}</span>
+        <div class="flex items-center space-x-1 bg-white px-3 py-1 rounded-full border border-[#E3DBD0] shadow-2xs">
+          <span class="text-xs">🪙</span>
+          <span class="text-xs font-bold text-[#635346]">{{ userCoins }}</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 頁籤切換：任務核心 vs. 犒賞小鋪 -->
+    <div class="flex border-b border-[#E8E0D4] bg-[#F7F2EB] shrink-0">
+      <button 
+        @click="currentTab = 'quests'"
+        :class="['flex-1 py-2.5 text-xs font-medium text-center relative transition', 
+                 currentTab === 'quests' ? 'text-[#54473D] font-bold' : 'text-[#A09083] hover:text-[#78695C]']"
+      >
+        🎯 任務闖關核心
+        <div v-if="currentTab === 'quests'" class="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-[#7D6B5C] rounded-full"></div>
+      </button>
+      <button 
+        @click="currentTab = 'shop'"
+        :class="['flex-1 py-2.5 text-xs font-medium text-center relative transition', 
+                 currentTab === 'shop' ? 'text-[#54473D] font-bold' : 'text-[#A09083] hover:text-[#78695C]']"
+      >
+        ☕ 心願犒賞小鋪
+        <div v-if="currentTab === 'shop'" class="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-[#7D6B5C] rounded-full"></div>
+      </button>
+    </div>
+
+    <!-- 主體內容區 -->
+    <main class="flex-1 p-4 overflow-y-auto space-y-4">
+      
+      <!-- ================= 頁籤 1: 任務闖關核心 ================= -->
+      <section v-if="currentTab === 'quests'" class="space-y-4">
+        
+        <!-- 當前檢視日期提示 (非今日時提示) -->
+        <div v-if="!isTodaySelected" class="flex justify-between items-center bg-[#F4EFEA] px-3.5 py-1.5 rounded-xl border border-[#E6DDD2] text-xs">
+          <span class="text-[#7A6A5D]">
+            檢視日期：<b>{{ selectedDateStr }}</b> ({{ isFutureSelected ? '未來排程' : '歷史打卡' }})
+          </span>
+          <button @click="jumpToToday" class="text-[11px] font-bold text-[#8C7665] hover:underline">回到今天</button>
+        </div>
+
+        <!-- 頂部：本週主線攻堅大關卡 -->
+        <div class="bg-gradient-to-br from-[#FFFDF9] to-[#F5EFEB] border border-[#E5DCD0] rounded-2xl p-4 shadow-xs relative">
+          <div class="flex justify-between items-start mb-1.5">
+            <div class="flex items-center space-x-2">
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-[#8C7665] text-white">本週主線里程碑</span>
+              <button @click="openEditMainModal" class="text-[11px] text-[#A69586] hover:text-[#5E4F43] transition">✏️ 編輯</button>
+            </div>
+            <span class="text-xs font-bold text-[#B5704D] bg-[#F7ECE4] px-2 py-0.5 rounded-full">+200 🪙</span>
+          </div>
+
+          <h3 class="text-xs sm:text-sm font-bold text-[#54473D] mb-1 leading-snug">{{ mainQuest.title }}</h3>
+          <p class="text-[11px] text-[#8A796B] leading-relaxed mb-3 whitespace-pre-line">{{ mainQuest.desc }}</p>
+          
+          <button 
+            @click="toggleMainQuest"
+            :class="['w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 active:scale-98',
+                     mainQuest.completed 
+                     ? 'bg-[#E3D9CC] text-[#78695C]' 
+                     : 'bg-[#7A6859] hover:bg-[#685749] text-white shadow-2xs']"
+          >
+            <span>{{ mainQuest.completed ? '✓ 本週主線已成功攻克' : '完成本週主線驗收' }}</span>
+          </button>
+        </div>
+
+        <!-- 支線成長象限 -->
+        <div class="space-y-2">
+          <div class="flex justify-between items-center px-1">
+            <h4 class="text-xs font-bold text-[#6D5D50]">支線成長象限</h4>
+            <span class="text-[10px] text-[#A39284]">每日 +10 🪙 ｜ 每週 +30 🪙</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            
+            <!-- 1. 左上：健康活力（每日微習慣） -->
+            <div class="bg-white border border-[#E9E1D5] rounded-2xl p-3 flex flex-col justify-between shadow-2xs">
+              <div>
+                <div class="flex justify-between items-center pb-2 mb-2 border-b border-[#F2ECE3]">
+                  <div class="flex items-center space-x-1.5">
+                    <span class="text-sm">🟢</span>
+                    <span class="text-xs font-bold text-[#4E8765]">健康活力</span>
+                  </div>
+                  <button @click="addNewTask('health', 'daily')" class="text-[10px] font-bold text-[#7A6859] hover:underline">+ 新增</button>
+                </div>
+                <div class="space-y-2">
+                  <div 
+                    v-for="(task, idx) in currentHealthTasks" 
+                    :key="task.id"
+                    class="flex items-center justify-between text-[11px] group"
+                  >
+                    <div class="flex items-center space-x-1.5 flex-1 mr-1">
+                      <div 
+                        @click="toggleTask(task)"
+                        class="w-4 h-4 rounded border flex items-center justify-center text-[9px] cursor-pointer shrink-0 transition"
+                        :class="task.completed ? 'bg-[#4E8765] border-[#4E8765] text-white' : 'border-[#C8BCAD] bg-white'"
+                      >
+                        <span v-if="task.completed">✓</span>
+                      </div>
+                      <input 
+                        type="text" 
+                        v-model="task.name" 
+                        @blur="saveData"
+                        class="bg-transparent focus:bg-[#FAF7F2] rounded px-1 w-full text-[#594C42] focus:outline-none"
+                        :class="{ 'line-through text-[#A6978A]': task.completed }"
+                      />
+                    </div>
+                    <button @click="removeDailyTask('health', idx)" class="text-[#C7B7A9] hover:text-[#A05C55] opacity-40 group-hover:opacity-100 text-[10px]">✕</button>
+                  </div>
+                </div>
+              </div>
+              <div class="text-right text-[9px] text-[#A6978A] pt-2 mt-2 border-t border-[#F7F3EE]">每日任務 (+10)</div>
+            </div>
+
+            <!-- 2. 右上：學習精進（每日小精進） -->
+            <div class="bg-white border border-[#E9E1D5] rounded-2xl p-3 flex flex-col justify-between shadow-2xs">
+              <div>
+                <div class="flex justify-between items-center pb-2 mb-2 border-b border-[#F2ECE3]">
+                  <div class="flex items-center space-x-1.5">
+                    <span class="text-sm">🔵</span>
+                    <span class="text-xs font-bold text-[#4B7B9E]">學習精進</span>
+                  </div>
+                  <button @click="addNewTask('learning', 'daily')" class="text-[10px] font-bold text-[#7A6859] hover:underline">+ 新增</button>
+                </div>
+                <div class="space-y-2">
+                  <div 
+                    v-for="(task, idx) in currentLearningTasks" 
+                    :key="task.id"
+                    class="flex items-center justify-between text-[11px] group"
+                  >
+                    <div class="flex items-center space-x-1.5 flex-1 mr-1">
+                      <div 
+                        @click="toggleTask(task)"
+                        class="w-4 h-4 rounded border flex items-center justify-center text-[9px] cursor-pointer shrink-0 transition"
+                        :class="task.completed ? 'bg-[#4B7B9E] border-[#4B7B9E] text-white' : 'border-[#C8BCAD] bg-white'"
+                      >
+                        <span v-if="task.completed">✓</span>
+                      </div>
+                      <input 
+                        type="text" 
+                        v-model="task.name" 
+                        @blur="saveData"
+                        class="bg-transparent focus:bg-[#FAF7F2] rounded px-1 w-full text-[#594C42] focus:outline-none"
+                        :class="{ 'line-through text-[#A6978A]': task.completed }"
+                      />
+                    </div>
+                    <button @click="removeDailyTask('learning', idx)" class="text-[#C7B7A9] hover:text-[#A05C55] opacity-40 group-hover:opacity-100 text-[10px]">✕</button>
+                  </div>
+                </div>
+              </div>
+              <div class="text-right text-[9px] text-[#A6978A] pt-2 mt-2 border-t border-[#F7F3EE]">每日任務 (+10)</div>
+            </div>
+
+            <!-- 3. 左下：財務盤點（每週小盤點） -->
+            <div class="bg-white border border-[#E9E1D5] rounded-2xl p-3 flex flex-col justify-between shadow-2xs">
+              <div>
+                <div class="flex justify-between items-center pb-2 mb-2 border-b border-[#F2ECE3]">
+                  <div class="flex items-center space-x-1.5">
+                    <span class="text-sm">🟡</span>
+                    <span class="text-xs font-bold text-[#B5894D]">財務盤點</span>
+                  </div>
+                  <button @click="addNewTask('finance', 'weekly')" class="text-[10px] font-bold text-[#7A6859] hover:underline">+ 新增</button>
+                </div>
+                <div class="space-y-2">
+                  <div 
+                    v-for="(task, idx) in weeklyTasks.finance" 
+                    :key="task.id"
+                    class="flex items-center justify-between text-[11px] group"
+                  >
+                    <div class="flex items-center space-x-1.5 flex-1 mr-1">
+                      <div 
+                        @click="toggleWeeklyTask(task)"
+                        class="w-4 h-4 rounded border flex items-center justify-center text-[9px] cursor-pointer shrink-0 transition"
+                        :class="task.completed ? 'bg-[#B5894D] border-[#B5894D] text-white' : 'border-[#C8BCAD] bg-white'"
+                      >
+                        <span v-if="task.completed">✓</span>
+                      </div>
+                      <input 
+                        type="text" 
+                        v-model="task.name" 
+                        @blur="saveData"
+                        class="bg-transparent focus:bg-[#FAF7F2] rounded px-1 w-full text-[#594C42] focus:outline-none"
+                        :class="{ 'line-through text-[#A6978A]': task.completed }"
+                      />
+                    </div>
+                    <button @click="removeWeeklyTask('finance', idx)" class="text-[#C7B7A9] hover:text-[#A05C55] opacity-40 group-hover:opacity-100 text-[10px]">✕</button>
+                  </div>
+                </div>
+              </div>
+              <div class="text-right text-[9px] text-[#B5894D] font-semibold pt-2 mt-2 border-t border-[#F7F3EE]">每週任務 (+30)</div>
+            </div>
+
+            <!-- 4. 右下：生活品質（每週儀式感） -->
+            <div class="bg-white border border-[#E9E1D5] rounded-2xl p-3 flex flex-col justify-between shadow-2xs">
+              <div>
+                <div class="flex justify-between items-center pb-2 mb-2 border-b border-[#F2ECE3]">
+                  <div class="flex items-center space-x-1.5">
+                    <span class="text-sm">🟣</span>
+                    <span class="text-xs font-bold text-[#8C6D9E]">生活品質</span>
+                  </div>
+                  <button @click="addNewTask('life', 'weekly')" class="text-[10px] font-bold text-[#7A6859] hover:underline">+ 新增</button>
+                </div>
+                <div class="space-y-2">
+                  <div 
+                    v-for="(task, idx) in weeklyTasks.life" 
+                    :key="task.id"
+                    class="flex items-center justify-between text-[11px] group"
+                  >
+                    <div class="flex items-center space-x-1.5 flex-1 mr-1">
+                      <div 
+                        @click="toggleWeeklyTask(task)"
+                        class="w-4 h-4 rounded border flex items-center justify-center text-[9px] cursor-pointer shrink-0 transition"
+                        :class="task.completed ? 'bg-[#8C6D9E] border-[#8C6D9E] text-white' : 'border-[#C8BCAD] bg-white'"
+                      >
+                        <span v-if="task.completed">✓</span>
+                      </div>
+                      <input 
+                        type="text" 
+                        v-model="task.name" 
+                        @blur="saveData"
+                        class="bg-transparent focus:bg-[#FAF7F2] rounded px-1 w-full text-[#594C42] focus:outline-none"
+                        :class="{ 'line-through text-[#A6978A]': task.completed }"
+                      />
+                    </div>
+                    <button @click="removeWeeklyTask('life', idx)" class="text-[#C7B7A9] hover:text-[#A05C55] opacity-40 group-hover:opacity-100 text-[10px]">✕</button>
+                  </div>
+                </div>
+              </div>
+              <div class="text-right text-[9px] text-[#8C6D9E] font-semibold pt-2 mt-2 border-t border-[#F7F3EE]">每週任務 (+30)</div>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ================= 頁籤 2: 心願商店 ================= -->
+      <section v-if="currentTab === 'shop'" class="space-y-4">
+        <div class="bg-[#F2ECE3] rounded-xl p-3 border border-[#E6DED2]">
+          <p class="text-xs text-[#7A6A5C] leading-relaxed">
+            🌿 <b>犒賞原則</b>：這裡的所有項目都由你的自律努力換取。兌換後請帶著 100% 的好心情去享受，完全零罪惡感！
+          </p>
+        </div>
+
+        <div class="space-y-3">
+          <div 
+            v-for="item in rewards" 
+            :key="item.id"
+            class="p-3.5 rounded-2xl bg-white border border-[#ECE5DA] flex items-center justify-between shadow-2xs"
+          >
+            <div class="flex items-center space-x-3">
+              <span class="text-2xl">{{ item.icon }}</span>
+              <div>
+                <h5 class="text-xs font-bold text-[#54473D]">{{ item.name }}</h5>
+                <p class="text-[10px] text-[#9A897B]">{{ item.desc }}</p>
+              </div>
+            </div>
+
+            <button 
+              @click="redeemReward(item)"
+              class="px-3.5 py-1.5 rounded-full text-xs font-bold transition flex items-center space-x-1 active:scale-95"
+              :class="userCoins >= item.cost 
+                      ? 'bg-[#8C7665] hover:bg-[#786454] text-white shadow-2xs' 
+                      : 'bg-[#EADECE] text-[#A69789] cursor-not-allowed'"
+              :disabled="userCoins < item.cost"
+            >
+              <span>{{ item.cost }} 🪙</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 兌換紀錄 -->
+        <div v-if="redeemHistory.length > 0" class="pt-4 border-t border-[#E8E1D6]">
+          <h5 class="text-[11px] font-bold text-[#8A796C] mb-2">已享受的犒賞履歷</h5>
+          <div class="space-y-1.5 max-h-36 overflow-y-auto">
+            <div 
+              v-for="(log, idx) in redeemHistory" 
+              :key="idx"
+              class="text-[11px] text-[#A19182] flex justify-between py-1 border-b border-[#F0EAE1]"
+            >
+              <span>{{ log.name }} ({{ log.date }})</span>
+              <span>-{{ log.cost }} 🪙</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- TimeTree 風格完整月曆彈窗 -->
+    <div v-if="showCalendarModal" class="fixed inset-0 bg-black/45 backdrop-blur-2xs flex items-center justify-center p-3 z-50">
+      <div class="bg-[#FAF7F2] w-full max-w-md rounded-3xl p-4 border border-[#E8DFD3] shadow-2xl space-y-3 max-h-[92vh] flex flex-col">
+        <div class="flex justify-between items-center px-1 border-b border-[#EAE1D4] pb-2.5">
+          <div class="flex items-center space-x-2">
+            <span class="text-sm font-bold text-[#55473C]">{{ calendarYear }}年 {{ calendarMonth + 1 }}月</span>
+            <div class="flex items-center space-x-1">
+              <button @click="changeMonth(-1)" class="w-6 h-6 rounded-full hover:bg-[#EDE5DA] text-xs text-[#7A6859] flex items-center justify-center">◀</button>
+              <button @click="changeMonth(1)" class="w-6 h-6 rounded-full hover:bg-[#EDE5DA] text-xs text-[#7A6859] flex items-center justify-center">▶</button>
+            </div>
+          </div>
+          <button @click="jumpToToday" class="text-xs font-semibold text-[#8C7665] bg-[#EFE8DE] px-2.5 py-1 rounded-lg hover:bg-[#E5DCD0]">跳回今天</button>
+        </div>
+
+        <div class="grid grid-cols-7 text-center text-[10px] font-bold text-[#A8988B] py-1">
+          <span class="text-[#D96B6B]">日</span>
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span>
+          <span class="text-[#5B88B4]">六</span>
+        </div>
+
+        <div class="grid grid-cols-7 flex-1 border border-[#EFE8DE] bg-white rounded-2xl overflow-y-auto">
+          <div 
+            v-for="(cell, index) in monthCells" 
+            :key="index"
+            @click="cell.isCurrentMonth && selectDateFromModal(cell.dateStr)"
+            class="min-h-[64px] border-b border-r border-[#F4EFE8] p-1 flex flex-col justify-between transition cursor-pointer select-none"
+            :class="[
+              !cell.isCurrentMonth ? 'bg-[#FAF8F5]/50 cursor-default' : 'hover:bg-[#FCFAF7]',
+              cell.dateStr === selectedDateStr ? 'bg-[#F5EFE7] ring-1.5 ring-[#8C7665] z-10' : ''
+            ]"
+          >
+            <div class="flex items-center justify-between">
+              <span 
+                class="text-[10px] font-semibold w-4.5 h-4.5 flex items-center justify-center rounded-full"
+                :class="[
+                  !cell.isCurrentMonth ? 'text-[#D0C4B8]' : 'text-[#63554B]',
+                  cell.isToday ? 'bg-[#7A6859] text-white font-bold' : '',
+                  cell.weekdayIndex === 0 && cell.isCurrentMonth && !cell.isToday ? 'text-[#D96B6B]' : '',
+                  cell.weekdayIndex === 6 && cell.isCurrentMonth && !cell.isToday ? 'text-[#5B88B4]' : ''
+                ]"
+              >
+                {{ cell.dayNumber }}
+              </span>
+            </div>
+
+            <!-- 彩色事件標籤條 -->
+            <div class="space-y-0.5 mt-0.5 flex-1 overflow-hidden">
+              <div 
+                v-for="task in getVisiblePills(cell.dateStr)" 
+                :key="task.id"
+                class="text-[8px] px-1 py-0.2 rounded truncate font-medium text-white flex items-center space-x-0.5 leading-tight"
+                :style="{ backgroundColor: task.color }"
+                :class="{ 'opacity-60 line-through': task.completed }"
+              >
+                <span class="truncate">{{ task.name }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-1 flex justify-end">
+          <button @click="showCalendarModal = false" class="w-full py-2 bg-[#E8DDD0] hover:bg-[#DCD0C2] rounded-xl text-xs font-bold text-[#55473C]">
+            關閉日曆
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主線編輯彈窗 -->
+    <div v-if="showEditModal" class="fixed inset-0 bg-black/40 backdrop-blur-2xs flex items-center justify-center p-4 z-50">
+      <div class="bg-[#FAF7F2] w-full max-w-sm rounded-2xl p-5 border border-[#E8DFD3] shadow-2xl space-y-4">
+        <h3 class="text-sm font-bold text-[#5A4D43]">修改本週主線任務</h3>
+        
+        <div class="space-y-3">
+          <div>
+            <label class="block text-[11px] text-[#8C7C70] mb-1">當前進度（週次）</label>
+            <input type="number" min="1" max="10" v-model.number="tempMainQuest.week" class="w-full bg-white border border-[#E0D5C7] rounded-xl px-3 py-1.5 text-xs text-[#554A41] focus:outline-none focus:border-[#7A6859]" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-[#8C7C70] mb-1">主線標題</label>
+            <input type="text" v-model="tempMainQuest.title" class="w-full bg-white border border-[#E0D5C7] rounded-xl px-3 py-1.5 text-xs text-[#554A41] focus:outline-none focus:border-[#7A6859]" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-[#8C7C70] mb-1">任務描述與驗收標準</label>
+            <textarea rows="3" v-model="tempMainQuest.desc" class="w-full bg-white border border-[#E0D5C7] rounded-xl px-3 py-1.5 text-xs text-[#554A41] focus:outline-none focus:border-[#7A6859]"></textarea>
+          </div>
+        </div>
+
+        <div class="flex justify-end space-x-2 pt-2">
+          <button @click="showEditModal = false" class="px-3.5 py-1.5 rounded-xl text-xs text-[#8C7C70] bg-[#EFE8DF] hover:bg-[#E5DCD2]">取消</button>
+          <button @click="saveMainQuestEdit" class="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-[#7A6859] hover:bg-[#685749]">儲存變更</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    createApp({
+      setup() {
+        const STORAGE_KEY = 'quest_app_v5_custom';
+
+        const toDateString = (d) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+
+        const todayStr = toDateString(new Date());
+        const selectedDateStr = ref(todayStr);
+
+        const currentTab = ref('quests');
+        const currentWeek = ref(1);
+        const userCoins = ref(180);
+        const showEditModal = ref(false);
+        const showCalendarModal = ref(false);
+
+        const calendarYear = ref(new Date().getFullYear());
+        const calendarMonth = ref(new Date().getMonth());
+
+        // 主線任務
+        const mainQuest = ref({
+          title: 'W1：介面指令地圖與重力載重跑通',
+          desc: '翻閱借閱書籍前段，建立 ETABS 核心指令速查表，並完成第一個受均佈載重的多層構架分析。',
+          completed: false
+        });
+
+        const tempMainQuest = ref({ week: 1, title: '', desc: '' });
+
+        // 每日任務資料庫
+        const dailyGridMap = ref({});
+
+        // 預設每日微習慣（健康、學習）
+        const defaultDailyHabits = {
+          health: [
+            { id: 1, name: '喝足 2000 ml 溫水', completed: false },
+            { id: 2, name: '運動 / 騎車 20 分鐘', completed: false },
+            { id: 3, name: '12:00 前熄燈就寢', completed: false }
+          ],
+          learning: [
+            { id: 4, name: '精讀專業規範 15 頁', completed: false },
+            { id: 5, name: '記錄一則核心知識筆記', completed: false },
+            { id: 6, name: '聆聽 Podcast', completed: false },
+            { id: 7, name: '學習英文 15 min', completed: false },
+            { id: 8, name: '看紀錄片 / TED 演講', completed: false }
+          ]
+        };
+
+        // 每週任務（財務、生活品質）
+        const weeklyTasks = ref({
+          finance: [
+            { id: 1, name: '核對本週主要開銷明細', completed: false },
+            { id: 2, name: '檢視台股 / 美股持有狀態及下單', completed: false }
+          ],
+          life: [
+            { id: 1, name: '清理房間或書桌角落', completed: false },
+            { id: 2, name: '享受一次手作或美味餐點', completed: false },
+            { id: 3, name: '人際關係維護', completed: false }
+          ]
+        });
+
+        // 心願商店清單
+        const rewards = ref([
+          { id: 1, name: '外帶拿鐵／手搖飲一杯', cost: 80, icon: '☕', desc: '工作間隙隨時享受的日常微光' },
+          { id: 2, name: '週末悠閒甜點一份', cost: 250, icon: '🍰', desc: '為整週努力做一個舒心的收尾' },
+          { id: 3, name: '添購一本想讀的實體好書', cost: 450, icon: '📖', desc: '攻克主線的最佳知識反饋' },
+          { id: 4, name: '添購一件心儀的質感衣服', cost: 1200, icon: '👗', desc: '攻破大關卡後的心動大獎' },
+          { id: 5, name: '10 週通關：慶功大餐微旅行', cost: 4000, icon: '🥂', desc: '完整通關 ETABS 戰役的大犒賞' }
+        ]);
+
+        const redeemHistory = ref([]);
+
+        // 當日健康任務
+        const currentHealthTasks = computed(() => {
+          ensureDateExists(selectedDateStr.value);
+          return dailyGridMap.value[selectedDateStr.value].health;
+        });
+
+        // 當日學習任務
+        const currentLearningTasks = computed(() => {
+          ensureDateExists(selectedDateStr.value);
+          return dailyGridMap.value[selectedDateStr.value].learning;
+        });
+
+        const ensureDateExists = (dStr) => {
+          if (!dailyGridMap.value[dStr]) {
+            dailyGridMap.value[dStr] = JSON.parse(JSON.stringify(defaultDailyHabits));
+          }
+        };
+
+        const selectedDateDisplayStr = computed(() => {
+          const d = new Date(selectedDateStr.value);
+          const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+          return `${d.getMonth() + 1}月${d.getDate()}日 (${weekdays[d.getDay()]})`;
+        });
+
+        const isTodaySelected = computed(() => selectedDateStr.value === todayStr);
+        const isFutureSelected = computed(() => selectedDateStr.value > todayStr);
+
+        // 月曆網格
+        const monthCells = computed(() => {
+          const year = calendarYear.value;
+          const month = calendarMonth.value;
+          const firstDayIndex = new Date(year, month, 1).getDay();
+          const totalDays = new Date(year, month + 1, 0).getDate();
+          const prevMonthLastDate = new Date(year, month, 0).getDate();
+
+          const cells = [];
+
+          for (let i = firstDayIndex - 1; i >= 0; i--) {
+            cells.push({ dayNumber: prevMonthLastDate - i, isCurrentMonth: false, dateStr: '' });
+          }
+
+          for (let d = 1; d <= totalDays; d++) {
+            const cellDate = new Date(year, month, d);
+            const dStr = toDateString(cellDate);
+            cells.push({
+              dayNumber: d,
+              weekdayIndex: cellDate.getDay(),
+              isCurrentMonth: true,
+              dateStr: dStr,
+              isToday: dStr === todayStr
+            });
+          }
+
+          const remaining = 35 - cells.length;
+          const nextCount = remaining >= 0 ? remaining : 42 - cells.length;
+          for (let i = 1; i <= nextCount; i++) {
+            cells.push({ dayNumber: i, isCurrentMonth: false, dateStr: '' });
+          }
+
+          return cells;
+        });
+
+        const getVisiblePills = (dateStr) => {
+          if (!dateStr || !dailyGridMap.value[dateStr]) return [];
+          const list = [];
+          const h = dailyGridMap.value[dateStr].health || [];
+          const l = dailyGridMap.value[dateStr].learning || [];
+
+          h.forEach(item => list.push({ id: item.id, name: item.name, completed: item.completed, color: '#4E8765' }));
+          l.forEach(item => list.push({ id: item.id, name: item.name, completed: item.completed, color: '#4B7B9E' }));
+
+          return list.slice(0, 2);
+        };
+
+        const selectDateFromModal = (dateStr) => {
+          selectedDateStr.value = dateStr;
+          showCalendarModal.value = false;
+        };
+
+        const changeMonth = (delta) => {
+          let newMonth = calendarMonth.value + delta;
+          if (newMonth < 0) {
+            calendarMonth.value = 11;
+            calendarYear.value -= 1;
+          } else if (newMonth > 11) {
+            calendarMonth.value = 0;
+            calendarYear.value += 1;
+          } else {
+            calendarMonth.value = newMonth;
+          }
+        };
+
+        const jumpToToday = () => {
+          const d = new Date();
+          calendarYear.value = d.getFullYear();
+          calendarMonth.value = d.getMonth();
+          selectedDateStr.value = todayStr;
+        };
+
+        // 任務開關
+        const toggleTask = (task) => {
+          task.completed = !task.completed;
+          userCoins.value += task.completed ? 10 : -10;
+          saveData();
+        };
+
+        const toggleWeeklyTask = (task) => {
+          task.completed = !task.completed;
+          userCoins.value += task.completed ? 30 : -30;
+          saveData();
+        };
+
+        const toggleMainQuest = () => {
+          mainQuest.value.completed = !mainQuest.value.completed;
+          userCoins.value += mainQuest.value.completed ? 200 : -200;
+          saveData();
+        };
+
+        const openEditMainModal = () => {
+          tempMainQuest.value = {
+            week: currentWeek.value,
+            title: mainQuest.value.title,
+            desc: mainQuest.value.desc
+          };
+          showEditModal.value = true;
+        };
+
+        const saveMainQuestEdit = () => {
+          currentWeek.value = tempMainQuest.value.week;
+          mainQuest.value.title = tempMainQuest.value.title;
+          mainQuest.value.desc = tempMainQuest.value.desc;
+          showEditModal.value = false;
+          saveData();
+        };
+
+        const addNewTask = (category, type) => {
+          const name = prompt('請輸入任務名稱：', '');
+          if (!name || !name.trim()) return;
+
+          if (type === 'daily') {
+            ensureDateExists(selectedDateStr.value);
+            dailyGridMap.value[selectedDateStr.value][category].push({
+              id: Date.now(),
+              name: name.trim(),
+              completed: false
+            });
+          } else {
+            weeklyTasks.value[category].push({
+              id: Date.now(),
+              name: name.trim(),
+              completed: false
+            });
+          }
+          saveData();
+        };
+
+        const removeDailyTask = (category, idx) => {
+          const target = dailyGridMap.value[selectedDateStr.value][category][idx];
+          if (target.completed) userCoins.value -= 10;
+          dailyGridMap.value[selectedDateStr.value][category].splice(idx, 1);
+          saveData();
+        };
+
+        const removeWeeklyTask = (category, idx) => {
+          const target = weeklyTasks.value[category][idx];
+          if (target.completed) userCoins.value -= 30;
+          weeklyTasks.value[category].splice(idx, 1);
+          saveData();
+        };
+
+        const redeemReward = (item) => {
+          if (userCoins.value >= item.cost) {
+            userCoins.value -= item.cost;
+            redeemHistory.value.unshift({
+              name: item.name,
+              cost: item.cost,
+              date: new Date().toLocaleDateString()
+            });
+            saveData();
+            alert(`🎉 成功兌換【${item.name}】！請無罪惡感地去享受吧 ✨`);
+          }
+        };
+
+        // 自動儲存與讀取
+        const saveData = () => {
+          const payload = {
+            currentWeek: currentWeek.value,
+            userCoins: userCoins.value,
+            mainQuest: mainQuest.value,
+            dailyGridMap: dailyGridMap.value,
+            weeklyTasks: weeklyTasks.value,
+            redeemHistory: redeemHistory.value
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        };
+
+        const loadData = () => {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            try {
+              const data = JSON.parse(raw);
+              currentWeek.value = data.currentWeek ?? currentWeek.value;
+              userCoins.value = data.userCoins ?? userCoins.value;
+              mainQuest.value = data.mainQuest ?? mainQuest.value;
+              dailyGridMap.value = data.dailyGridMap ?? {};
+              weeklyTasks.value = data.weeklyTasks ?? weeklyTasks.value;
+              redeemHistory.value = data.redeemHistory ?? [];
+            } catch (e) {
+              console.error('讀取失敗', e);
+            }
+          }
+          ensureDateExists(todayStr);
+        };
+
+        onMounted(() => {
+          loadData();
+          // 註冊 PWA Service Worker
+          if ('serviceWorker' in navigator) {
+            const swCode = `self.addEventListener('fetch', function(e){});`;
+            const blob = new Blob([swCode], {type: 'application/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+          }
+        });
+
+        return {
+          currentTab,
+          currentWeek,
+          userCoins,
+          selectedDateStr,
+          selectedDateDisplayStr,
+          isTodaySelected,
+          isFutureSelected,
+          showCalendarModal,
+          calendarYear,
+          calendarMonth,
+          monthCells,
+          getVisiblePills,
+          selectDateFromModal,
+          changeMonth,
+          jumpToToday,
+          mainQuest,
+          tempMainQuest,
+          showEditModal,
+          currentHealthTasks,
+          currentLearningTasks,
+          weeklyTasks,
+          rewards,
+          redeemHistory,
+          toggleTask,
+          toggleWeeklyTask,
+          toggleMainQuest,
+          openEditMainModal,
+          saveMainQuestEdit,
+          addNewTask,
+          removeDailyTask,
+          removeWeeklyTask,
+          redeemReward,
+          saveData
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
