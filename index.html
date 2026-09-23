@@ -2,7 +2,6 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <!-- 禁止手機雙擊縮放，確保操作手感完全像原生 App -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>生活闖關手帳</title>
 
@@ -12,12 +11,12 @@
   <meta name="apple-mobile-web-app-title" content="生活闖關" />
   <meta name="theme-color" content="#FAF7F2" />
 
-  <!-- App 桌面圖示 (以 SVG 內嵌成高解析奶茶風圖標，無需外連圖片) -->
+  <!-- App 桌面圖示 -->
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%237A6859'/><text x='50%' y='55%' font-size='50' text-anchor='middle' dominant-baseline='middle'>🧭</text></svg>">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%237A6859'/><text x='50%' y='55%' font-size='50' text-anchor='middle' dominant-baseline='middle'>🧭</text></svg>">
 
   <!-- 內嵌 PWA Manifest 設定 -->
-  <link rel="manifest" href="data:application/manifest+json;utf-8,%7B%22name%22%3A%22%E7%94%9F%E6%B4%BB%E9%97%96%E9%97%9C%E6%89%8B%E5%B8%B3%22%2C%22short_name%22%3A%22%E7%94%9F%E6%B4%BB%E9%97%96%E9%97%9C%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FAF7F2%22%2C%22theme_color%22%3A%22%23FAF7F2%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Crect%20width%3D'100'%20height%3D'100'%20rx%3D'25'%20fill%3D'%237A6859'%2F%3E%3Ctext%20x%3D'50%25'%20y%3D'55%25'%20font-size%3D'50'%20text-anchor%3D'middle'%20dominant-baseline%3D'middle'%3E%F0%9F%A7%AD%3C%2Ftext%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22192x192%20512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+  <link rel="manifest" href="data:application/manifest+json;utf-8,%7B%22name%22%3A%22%E7%94%9F%E6%B4%BB%E9%97%96%E9%97%9C%E6%89%8B%E5%B8%B3%22%2C%22short_name%22%3A%22%E7%94%9F%E6%B4%BB%E9%97%96%E9%97%9C%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FAF7F2%22%2C%22theme_color%22%3A%22%23FAF7F2%22%7D">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -43,7 +42,7 @@
   <div id="app" class="w-full max-w-lg bg-[#FFFDF9] sm:rounded-3xl shadow-xl shadow-[#E8E1D5]/60 border-x sm:border border-[#ECE4D8] flex flex-col h-screen sm:h-[94vh] max-h-[920px] overflow-hidden">
     
     <!-- 頂部資訊列：點擊日期呼叫 TimeTree 月曆 -->
-    <header class="px-5 py-3.5 bg-[#FAF7F2] border-b border-[#EAE2D5] flex items-center justify-between shrink-0 pt-safe">
+    <header class="px-5 py-3.5 bg-[#FAF7F2] border-b border-[#EAE2D5] flex items-center justify-between shrink-0">
       <button 
         @click="showCalendarModal = true" 
         class="flex items-center space-x-2 px-3 py-1.5 rounded-2xl bg-[#EFE8DE] hover:bg-[#E5DCD0] active:scale-95 text-xs font-bold text-[#55473C] transition shadow-2xs group"
@@ -88,7 +87,7 @@
       <!-- ================= 頁籤 1: 任務闖關核心 ================= -->
       <section v-if="currentTab === 'quests'" class="space-y-4">
         
-        <!-- 當前檢視日期提示 (非今日時提示) -->
+        <!-- 當前檢視日期提示 -->
         <div v-if="!isTodaySelected" class="flex justify-between items-center bg-[#F4EFEA] px-3.5 py-1.5 rounded-xl border border-[#E6DDD2] text-xs">
           <span class="text-[#7A6A5D]">
             檢視日期：<b>{{ selectedDateStr }}</b> ({{ isFutureSelected ? '未來排程' : '歷史打卡' }})
@@ -368,7 +367,7 @@
             v-for="(cell, index) in monthCells" 
             :key="index"
             @click="cell.isCurrentMonth && selectDateFromModal(cell.dateStr)"
-            class="min-h-[64px] border-b border-r border-[#F4EFE8] p-1 flex flex-col justify-between transition cursor-pointer select-none"
+            class="min-h-[72px] border-b border-r border-[#F4EFE8] p-1 flex flex-col justify-between transition cursor-pointer select-none"
             :class="[
               !cell.isCurrentMonth ? 'bg-[#FAF8F5]/50 cursor-default' : 'hover:bg-[#FCFAF7]',
               cell.dateStr === selectedDateStr ? 'bg-[#F5EFE7] ring-1.5 ring-[#8C7665] z-10' : ''
@@ -388,16 +387,20 @@
               </span>
             </div>
 
-            <!-- 彩色事件標籤條 -->
+            <!-- 彩色事件標籤條：只顯示當天「真正已打卡完成」的項目 -->
             <div class="space-y-0.5 mt-0.5 flex-1 overflow-hidden">
               <div 
                 v-for="task in getVisiblePills(cell.dateStr)" 
                 :key="task.id"
                 class="text-[8px] px-1 py-0.2 rounded truncate font-medium text-white flex items-center space-x-0.5 leading-tight"
                 :style="{ backgroundColor: task.color }"
-                :class="{ 'opacity-60 line-through': task.completed }"
+                :title="task.name"
               >
+                <span>✓</span>
                 <span class="truncate">{{ task.name }}</span>
+              </div>
+              <div v-if="getHiddenPillsCount(cell.dateStr) > 0" class="text-[7px] text-[#A6978A] font-bold px-0.5">
+                +{{ getHiddenPillsCount(cell.dateStr) }} 項已完成
               </div>
             </div>
           </div>
@@ -445,7 +448,8 @@
 
     createApp({
       setup() {
-        const STORAGE_KEY = 'quest_app_v5_custom';
+        // 更新儲存金鑰，徹底重置舊的錯誤標記
+        const STORAGE_KEY = 'quest_app_v6_fix';
 
         const toDateString = (d) => {
           const y = d.getFullYear();
@@ -478,8 +482,8 @@
         // 每日任務資料庫
         const dailyGridMap = ref({});
 
-        // 預設每日微習慣（健康、學習）
-        const defaultDailyHabits = {
+        // 產生乾淨預設每日微習慣（保證 completed 均為 false）
+        const createCleanDailyHabits = () => ({
           health: [
             { id: 1, name: '喝足 2000 ml 溫水', completed: false },
             { id: 2, name: '運動 / 騎車 20 分鐘', completed: false },
@@ -492,7 +496,7 @@
             { id: 7, name: '學習英文 15 min', completed: false },
             { id: 8, name: '看紀錄片 / TED 演講', completed: false }
           ]
-        };
+        });
 
         // 每週任務（財務、生活品質）
         const weeklyTasks = ref({
@@ -518,23 +522,22 @@
 
         const redeemHistory = ref([]);
 
-        // 當日健康任務
+        // 安全取得日期清單，確保不偷跑修改
+        const ensureDateExists = (dStr) => {
+          if (!dailyGridMap.value[dStr]) {
+            dailyGridMap.value[dStr] = createCleanDailyHabits();
+          }
+        };
+
         const currentHealthTasks = computed(() => {
           ensureDateExists(selectedDateStr.value);
           return dailyGridMap.value[selectedDateStr.value].health;
         });
 
-        // 當日學習任務
         const currentLearningTasks = computed(() => {
           ensureDateExists(selectedDateStr.value);
           return dailyGridMap.value[selectedDateStr.value].learning;
         });
-
-        const ensureDateExists = (dStr) => {
-          if (!dailyGridMap.value[dStr]) {
-            dailyGridMap.value[dStr] = JSON.parse(JSON.stringify(defaultDailyHabits));
-          }
-        };
 
         const selectedDateDisplayStr = computed(() => {
           const d = new Date(selectedDateStr.value);
@@ -545,7 +548,7 @@
         const isTodaySelected = computed(() => selectedDateStr.value === todayStr);
         const isFutureSelected = computed(() => selectedDateStr.value > todayStr);
 
-        // 月曆網格
+        // 月曆網格生成
         const monthCells = computed(() => {
           const year = calendarYear.value;
           const month = calendarMonth.value;
@@ -580,16 +583,31 @@
           return cells;
         });
 
+        // 核心修復：只回傳「真正 completed === true」的打卡項目
         const getVisiblePills = (dateStr) => {
           if (!dateStr || !dailyGridMap.value[dateStr]) return [];
           const list = [];
           const h = dailyGridMap.value[dateStr].health || [];
           const l = dailyGridMap.value[dateStr].learning || [];
 
-          h.forEach(item => list.push({ id: item.id, name: item.name, completed: item.completed, color: '#4E8765' }));
-          l.forEach(item => list.push({ id: item.id, name: item.name, completed: item.completed, color: '#4B7B9E' }));
+          // 抓出已打卡項目，健康為綠色，學習為藍色
+          h.filter(item => item.completed).forEach(item => {
+            list.push({ id: item.id, name: item.name, color: '#4E8765' });
+          });
+          l.filter(item => item.completed).forEach(item => {
+            list.push({ id: item.id, name: item.name, color: '#4B7B9E' });
+          });
 
+          // 最多展示前 2 個完成標籤
           return list.slice(0, 2);
+        };
+
+        const getHiddenPillsCount = (dateStr) => {
+          if (!dateStr || !dailyGridMap.value[dateStr]) return 0;
+          const h = dailyGridMap.value[dateStr].health || [];
+          const l = dailyGridMap.value[dateStr].learning || [];
+          const totalCompleted = h.filter(i => i.completed).length + l.filter(i => i.completed).length;
+          return Math.max(0, totalCompleted - 2);
         };
 
         const selectDateFromModal = (dateStr) => {
@@ -617,7 +635,7 @@
           selectedDateStr.value = todayStr;
         };
 
-        // 任務開關
+        // 任務開關（只有手動點擊才切換）
         const toggleTask = (task) => {
           task.completed = !task.completed;
           userCoins.value += task.completed ? 10 : -10;
@@ -734,7 +752,6 @@
 
         onMounted(() => {
           loadData();
-          // 註冊 PWA Service Worker
           if ('serviceWorker' in navigator) {
             const swCode = `self.addEventListener('fetch', function(e){});`;
             const blob = new Blob([swCode], {type: 'application/javascript'});
@@ -755,6 +772,7 @@
           calendarMonth,
           monthCells,
           getVisiblePills,
+          getHiddenPillsCount,
           selectDateFromModal,
           changeMonth,
           jumpToToday,
